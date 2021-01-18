@@ -1,0 +1,123 @@
+####### 1. Explore data the number of rows ########
+SELECT
+  COUNT(DISTINCT userId) numUsers,
+  COUNT(DISTINCT movieId) numMovies,
+  COUNT(*) totalRatings
+FROM
+  movies.movielens_ratings
+
+
+####### 2. Seeing movie base on movieId less than 5 ########
+SELECT
+  *
+FROM
+  movies.movielens_movies_raw
+WHERE
+  movieId < 5
+
+
+
+####### 3. Replace sign of "|" to cleaning data
+CREATE OR REPLACE TABLE
+  movies.movielens_movies AS
+SELECT
+  * REPLACE(SPLIT(genres, "|") AS genres)
+FROM
+  movies.movielens_movies_raw
+  
+  
+  
+####### 4. see the model evaluation
+SELECT * FROM ML.EVALUATE(MODEL `cloud-training-prod-bucket.movies.movie_recommender`)
+
+
+
+####### 5. predict model in limit 5 ########
+SELECT
+  *
+FROM
+  ML.PREDICT(MODEL `cloud-training-prod-bucket.movies.movie_recommender`,
+    (
+    SELECT
+      movieId,
+      title,
+      903 AS userId
+    FROM
+      `movies.movielens_movies`,
+      UNNEST(genres) g
+    WHERE
+      g = 'Comedy' ))
+ORDER BY
+  predicted_rating DESC
+LIMIT
+  5  
+  
+
+####### 6. Predict limit 100 to show ########
+SELECT
+  *
+FROM
+  ML.PREDICT(MODEL `cloud-training-prod-bucket.movies.movie_recommender`,
+    (
+    WITH
+      allUsers AS (
+      SELECT
+        DISTINCT userId
+      FROM
+        movies.movielens_ratings )
+    SELECT
+      96481 AS movieId,
+      (
+      SELECT
+        title
+      FROM
+        movies.movielens_movies
+      WHERE
+        movieId=96481) title,
+      userId
+    FROM
+      allUsers ))
+ORDER BY
+  predicted_rating DESC
+LIMIT
+  100
+  
+####### 7. Predict limit 5 ########
+SELECT
+  *
+FROM
+  ML.PREDICT(MODEL `cloud-training-prod-bucket.movies.movie_recommender`,
+    (
+    WITH
+      allUsers AS (
+      SELECT
+        DISTINCT userId
+      FROM
+        movies.movielens_ratings )
+    SELECT
+      96481 AS movieId,
+      (
+      SELECT
+        title
+      FROM
+        movies.movielens_movies
+      WHERE
+        movieId=96481) title,
+      userId
+    FROM
+      allUsers ))
+ORDER BY
+  predicted_rating DESC
+LIMIT
+  5
+  
+
+####### 8. build recomend ########
+
+SELECT
+  *
+FROM
+  ML.RECOMMEND(MODEL `cloud-training-prod-bucket.movies.movie_recommender`)
+LIMIT 
+  100000
+
